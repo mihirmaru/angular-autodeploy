@@ -1,0 +1,62 @@
+name: Build and Deploy Angular to GitHub Pages
+
+on:
+  push:
+    branches:
+      - development
+      - main
+  pull_request:
+    branches:
+      - development
+      - main
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      # - name: Run tests
+        # run: npm run test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Build Angular app
+        run: |
+          npm run build -- --configuration production --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Deploy to releasedversion branch
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # Clone releasedversion branch separately
+          git clone --branch releasedversion https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git deploy
+
+          # Clean old files
+          rm -rf deploy/*
+
+          # Copy new build
+          cp -r dist/${{ github.event.repository.name }}/* deploy/
+
+          cd deploy
+
+          # Ensure index.html exists
+          if [ ! -f index.html ]; then
+            echo "Build failed: index.html not found"
+            exit 1
+          fi
+
+          git add .
+          git commit -m "Auto deploy from ${{ github.sha }}" || echo "No changes to commit"
+          git push origin releasedversion
