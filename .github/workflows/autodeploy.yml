@@ -47,7 +47,7 @@ jobs:
           rm -rf deploy/*
 
           # Copy new build
-          cp -r dist/${{ github.event.repository.name }}/* deploy/
+          cp -r dist/${{ github.event.repository.name }}/browser/* deploy/
 
           cd deploy
 
